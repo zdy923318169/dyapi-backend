@@ -1,12 +1,15 @@
 package com.yupi.project.service.impl;
 
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.project.common.ErrorCode;
 import com.yupi.project.exception.BusinessException;
 import com.yupi.project.mapper.UserMapper;
-import com.yupi.project.model.entity.User;
+import com.yupi.project.model.dto.user.UserLoginRequest;
 import com.yupi.project.service.UserService;
+import com.yupi.yuapicommon.model.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -63,10 +66,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
             // 2. 加密
             String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
-            // 3. 插入数据
+            // 3. 分配 accessKey, secretKey
+            String accessKey = DigestUtil.md5Hex(SALT + userAccount + RandomUtil.randomNumbers(5));
+            String secretKey = DigestUtil.md5Hex(SALT + userAccount + RandomUtil.randomNumbers(8));
+            // 4. 插入数据
             User user = new User();
             user.setUserAccount(userAccount);
             user.setUserPassword(encryptPassword);
+            user.setAccessKey(accessKey);
+            user.setSecretKey(secretKey);
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
@@ -154,6 +162,51 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 移除登录态
         request.getSession().removeAttribute(USER_LOGIN_STATE);
         return true;
+    }
+
+    /**
+     * 手机号登入
+     * @param userLoginRequest
+     * @param request
+     * @return
+     */
+    @Override
+    public User userLoginByMobile(UserLoginRequest userLoginRequest, HttpServletRequest request) {
+        String mobile = userLoginRequest.getMobile();
+        String captcha = userLoginRequest.getCaptcha();
+        // 1. 校验
+        if (StringUtils.isAnyBlank(mobile, captcha)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+        }
+        if (!captcha.equals("923318")){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误");
+        }
+        // 查询用户是否存在
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userAccount", mobile);
+        User user = userMapper.selectOne(queryWrapper);
+        // 用户不存在
+        if (user == null) {
+            String encryptPassword = DigestUtils.md5DigestAsHex((SALT + "123456").getBytes());
+            // 3. 分配 accessKey, secretKey
+            String accessKey = DigestUtil.md5Hex(SALT + mobile + RandomUtil.randomNumbers(5));
+            String secretKey = DigestUtil.md5Hex(SALT + mobile + RandomUtil.randomNumbers(8));
+            // 4. 插入数据
+            User user1 = new User();
+            user1.setUserAccount(mobile);
+            user1.setUserPassword(encryptPassword);
+            user1.setAccessKey(accessKey);
+            user1.setSecretKey(secretKey);
+            boolean saveResult = this.save(user1);
+            if (!saveResult){
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "登入失败");
+            }
+            request.getSession().setAttribute(USER_LOGIN_STATE, user);
+            return user1;
+        }
+        // 3. 记录用户的登录态
+        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        return user;
     }
 
 }

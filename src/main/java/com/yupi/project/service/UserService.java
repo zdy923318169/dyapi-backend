@@ -2,7 +2,8 @@ package com.yupi.project.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yupi.project.model.entity.User;
+import com.yupi.project.model.dto.user.UserLoginRequest;
+import com.yupi.yuapicommon.model.entity.User;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -56,4 +57,12 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean userLogout(HttpServletRequest request);
+
+    /**
+     * 手机号登入
+     * @param userLoginRequest
+     * @param request
+     * @return
+     */
+    User userLoginByMobile(UserLoginRequest userLoginRequest, HttpServletRequest request);
 }

@@ -8,11 +8,10 @@ import com.yupi.project.common.DeleteRequest;
 import com.yupi.project.common.ErrorCode;
 import com.yupi.project.common.ResultUtils;
 import com.yupi.project.exception.BusinessException;
-import com.yupi.project.model.dto.*;
 import com.yupi.project.model.dto.user.*;
-import com.yupi.project.model.entity.User;
 import com.yupi.project.model.vo.UserVO;
 import com.yupi.project.service.UserService;
+import com.yupi.yuapicommon.model.entity.User;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -69,13 +68,20 @@ public class UserController {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        String userAccount = userLoginRequest.getUserAccount();
-        String userPassword = userLoginRequest.getUserPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        if (userLoginRequest.getMobile()==null || userLoginRequest.getCaptcha()==null){
+            String userAccount = userLoginRequest.getUserAccount();
+            String userPassword = userLoginRequest.getUserPassword();
+            if (StringUtils.isAnyBlank(userAccount, userPassword)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            }
+            User user = userService.userLogin(userAccount, userPassword, request);
+            return ResultUtils.success(user);
+        }else {
+
+            User user = userService.userLoginByMobile(userLoginRequest, request);
+            return ResultUtils.success(user);
         }
-        User user = userService.userLogin(userAccount, userPassword, request);
-        return ResultUtils.success(user);
+
     }
 
     /**
