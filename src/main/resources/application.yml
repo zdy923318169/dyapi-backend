@@ -7,9 +7,9 @@ spring:
   # DataSource Config
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/yuapi
+    url: jdbc:mysql://47.97.165.9:3306/yuapi
     username: root
-    password: 123455
+    password: 123456
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
@@ -22,7 +22,6 @@ spring:
     port: 6379
     host: 47.97.165.9
     database: 0
-    password: 123456
 server:
   port: 7529
   servlet:
@@ -39,8 +38,8 @@ mybatis-plus:
 # 这段配置仅供测试，实际应该根据登录用户获取对应的 ak、sk
 yuapi:
   client:
-    access-key: yupi
-    secret-key: abcdefgh
+    access-key: 87c51c02312e53f7f75f4c9cffc103a8
+    secret-key: ba32904e3f696493346d96f0b10c5b45
 dubbo:
   application:
     name: dubbo-springboot-demo-provider

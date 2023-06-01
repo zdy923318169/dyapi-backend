@@ -1,0 +1,7 @@
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+dyapi-client:
+  access-key: deyapi
+  secret-key: 12345678

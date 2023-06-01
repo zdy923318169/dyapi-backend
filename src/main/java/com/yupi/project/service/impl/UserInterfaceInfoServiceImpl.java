@@ -3,6 +3,7 @@ package com.yupi.project.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yupi.project.common.BaseResponse;
 import com.yupi.project.common.ErrorCode;
 import com.yupi.project.exception.BusinessException;
 import com.yupi.project.mapper.UserInterfaceInfoMapper;
@@ -18,7 +19,7 @@ import javax.annotation.Resource;
  */
 @Service
 public class UserInterfaceInfoServiceImpl extends ServiceImpl<UserInterfaceInfoMapper, UserInterfaceInfo>
-    implements UserInterfaceInfoService{
+        implements UserInterfaceInfoService {
     @Autowired
     UserInterfaceInfoMapper userInterfaceInfoMapper;
 
@@ -45,24 +46,38 @@ public class UserInterfaceInfoServiceImpl extends ServiceImpl<UserInterfaceInfoM
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         LambdaQueryWrapper<UserInterfaceInfo> userInterfaceInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getInterfaceInfoId,interfaceInfoId);
-        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getUserId,userId);
+        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getInterfaceInfoId, interfaceInfoId);
+        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getUserId, userId);
         UserInterfaceInfo one = getOne(userInterfaceInfoLambdaQueryWrapper);
-        if (one==null){
-            boolean b = userInterfaceInfoMapper.insertAllBoolean(interfaceInfoId, userId);
-            return b;
-        }else {
-            UpdateWrapper<UserInterfaceInfo> updateWrapper = new UpdateWrapper<>();
-            updateWrapper.eq("interfaceInfoId", interfaceInfoId);
-            updateWrapper.eq("userId", userId);
-            updateWrapper.setSql("leftNum = leftNum - 1, totalNum = totalNum + 1");
-            return this.update(updateWrapper);
-        }
-
-
+        UpdateWrapper<UserInterfaceInfo> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("interfaceInfoId", interfaceInfoId);
+        updateWrapper.eq("userId", userId);
+        updateWrapper.setSql("leftNum = leftNum - 1, totalNum = totalNum + 1");
+        return this.update(updateWrapper);
     }
 
+    @Override
+    public boolean selcetCount(long interfaceInfoId, long userId) {
+        // 判断
+        if (interfaceInfoId <= 0 || userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        LambdaQueryWrapper<UserInterfaceInfo> userInterfaceInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getInterfaceInfoId, interfaceInfoId);
+        userInterfaceInfoLambdaQueryWrapper.eq(UserInterfaceInfo::getUserId, userId);
+        UserInterfaceInfo one = getOne(userInterfaceInfoLambdaQueryWrapper);
+        if (one == null) {
+            boolean b = userInterfaceInfoMapper.insertAllBoolean(interfaceInfoId, userId);
+            return false;
+        }
+
+        return one.getLeftNum()==0;
+    }
+
+
 }
+
+
 
 
 

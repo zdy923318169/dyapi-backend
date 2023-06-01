@@ -22,7 +22,7 @@
         createTime,updateTime,isDelete
     </sql>
     <insert id="insertAllBoolean" >
-        INSERT INTO table_name ( interfaceInfoId, userId,totalNum )
+        INSERT INTO user_interface_info ( interfaceInfoId, userId,leftNum )
         VALUES( #{interfaceInfoId}, #{userId},50 );
     </insert>
     <select id="listTopInvokeInterfaceInfo" resultType="com.yupi.yuapicommon.model.entity.UserInterfaceInfo">

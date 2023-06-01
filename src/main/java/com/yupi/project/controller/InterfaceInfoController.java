@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -222,7 +224,7 @@ public class InterfaceInfoController {
         }
         // 判断该接口是否可以调用
         com.dy.dyapiclientsdk.model.User user = new com.dy.dyapiclientsdk.model.User();
-        user.setName("test");
+        user.setUsername("test");
         String username = yuApiClient.getUsernameByPost(user);
         if (StringUtils.isBlank(username)) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "接口验证失败");
@@ -280,6 +282,7 @@ public class InterfaceInfoController {
         String userRequestParams = interfaceInfoInvokeRequest.getUserRequestParams();
         // 判断是否存在
         InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
+        String name = oldInterfaceInfo.getName();
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
@@ -289,11 +292,82 @@ public class InterfaceInfoController {
         User loginUser = userService.getLoginUser(request);
         String accessKey = loginUser.getAccessKey();
         String secretKey = loginUser.getSecretKey();
-        DeyApiClient tempClient = new DeyApiClient(accessKey, secretKey);
-        Gson gson = new Gson();
-        com.dy.dyapiclientsdk.model.User user = gson.fromJson(userRequestParams, com.dy.dyapiclientsdk.model.User.class);
-        String usernameByPost = tempClient.getUsernameByPost(user);
-        return ResultUtils.success(usernameByPost);
+        Object result = reflectionInterface(DeyApiClient.class, name, userRequestParams, accessKey, secretKey);
+        //网关拦截对异常处理
+        if (result.equals(GateWayErrorCode.FORBIDDEN.getCode())){
+            throw new BusinessException(ErrorCode.FORBIDDEN_ERROR,"调用次数已用尽");
+        }
+        return ResultUtils.success(result);
     }
+
+    public Object reflectionInterface(Class<?> reflectionClass, String methodName, String parameter, String accessKey, String secretKey) {
+        //构造反射类的实例
+        Object result = null;
+        try {
+            Constructor<?> constructor = reflectionClass.getDeclaredConstructor(String.class, String.class);
+            //获取SDK的实例，同时传入密钥
+            DeyApiClient deyApiClient = (DeyApiClient) constructor.newInstance(accessKey, secretKey);
+            //获取SDK中所有的方法
+            Method[] methods = deyApiClient.getClass().getMethods();
+            //筛选出调用方法
+            for (Method method : methods) {
+                if (method.getName().equals(methodName)) {
+                    //获取方法参数类型
+                    Class<?>[] parameterTypes = method.getParameterTypes();
+                    Method method1;
+                    if (parameterTypes.length == 0){
+                        method1 = deyApiClient.getClass().getMethod(methodName);
+                        return method1.invoke(deyApiClient);
+                    }
+                    method1 = deyApiClient.getClass().getMethod(methodName, parameterTypes[0]);
+                    //getMethod，多参会考虑重载情况获取方法,前端传来参数是JSON格式转换为String类型
+                    //参数Josn化
+                    Gson gson = new Gson();
+                    Object args = gson.fromJson(parameter, parameterTypes[0]);
+                    return result = method1.invoke(deyApiClient, args);
+                }
+            }
+        } catch (Exception e) {
+            log.error("反射调用参数错误",e);
+        }
+        return result;
+    }
+
+    /**
+     * 分页获取列表
+     *
+     * @param interfaceInfoQueryRequest
+     * @param request
+     * @return
+     */
+    @GetMapping("/list/page/online")
+    public BaseResponse<Page<InterfaceInfo>> listInterfaceInfoByPageOnline(InterfaceInfoQueryRequest interfaceInfoQueryRequest, HttpServletRequest request) {
+        if (interfaceInfoQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        InterfaceInfo interfaceInfoQuery = new InterfaceInfo();
+        BeanUtils.copyProperties(interfaceInfoQueryRequest, interfaceInfoQuery);
+        long current = interfaceInfoQueryRequest.getCurrent();
+        long size = interfaceInfoQueryRequest.getPageSize();
+        String sortField = interfaceInfoQueryRequest.getSortField();
+        String sortOrder = interfaceInfoQueryRequest.getSortOrder();
+        String description = interfaceInfoQuery.getDescription();
+        // description 需支持模糊搜索
+        interfaceInfoQuery.setDescription(null);
+        // 限制爬虫
+        if (size > 50) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        QueryWrapper<InterfaceInfo> queryWrapper = new QueryWrapper<>(interfaceInfoQuery);
+        queryWrapper.eq("status",1);
+        queryWrapper.like(StringUtils.isNotBlank(description), "description", description);
+        queryWrapper.orderBy(StringUtils.isNotBlank(sortField),
+                sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
+        Page<InterfaceInfo> interfaceInfoPage = interfaceInfoService.page(new Page<>(current, size), queryWrapper);
+        return ResultUtils.success(interfaceInfoPage);
+    }
+
+
+
 
 }

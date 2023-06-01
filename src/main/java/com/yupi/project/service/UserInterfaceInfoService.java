@@ -16,4 +16,6 @@ public interface UserInterfaceInfoService extends IService<UserInterfaceInfo> {
      * @return
      */
     boolean invokeCount(long interfaceInfoId, long userId);
+
+    boolean selcetCount(long interfaceInfoId, long userId);
 }
